@@ -48,4 +48,14 @@ object AppModule {
             .create(GastosApi::class.java)
     }
 
+    @Provides
+    @Singleton
+    fun provideSuplidorGastosApi(moshi: Moshi, ): SuplidorApi {
+        return Retrofit.Builder()
+            .baseUrl("https://sag-api.azurewebsites.net/api/")
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(SuplidorApi::class.java)
+    }
+
 }

@@ -10,17 +10,17 @@ data class GastoDto (
     @Json(name = "idGasto")
     var idGasto : Int?=null,
     @Json(name = "fecha")
-    var fecha : String,
+    var fecha : String?=null,
     @Json(name = "idSuplidor")
-    var idSuplidor : Int,
+    var idSuplidor : Int?=null,
     @Json(name = "ncf")
-    var ncf : String,
+    var ncf : String?=null,
     @Json(name = "concepto")
-    var concepto : String,
+    var concepto : String?=null,
     @Json(name = "descuento")
-    var descuento : Int,
+    var descuento : Int?=null,
     @Json(name = "itbis")
-    var itbis : Int,
+    var itbis : Int?=null,
     @Json(name = "monto")
-    var monto : Int
+    var monto : Int?=null,
 )

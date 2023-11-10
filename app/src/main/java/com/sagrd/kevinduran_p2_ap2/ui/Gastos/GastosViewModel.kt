@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,6 +29,7 @@ import javax.inject.Inject
 class GastosViewModel @Inject constructor(
     private val gastoRepository: GastoRepository,
     private val  suplidorRepository: SuplidorRepository
+
 ) : ViewModel() {
     var gastoActual by mutableStateOf(GastoDto(0, "",0, "", "", 0,0,0))
 
@@ -48,13 +50,15 @@ class GastosViewModel @Inject constructor(
     var itbisError  by  mutableStateOf(true)
     var montoError  by  mutableStateOf(true)
 
-    fun String.isValid(): Boolean{
+    var selectedText by  mutableStateOf("")
+
+    fun String.isInvalid(): Boolean{
         try {
             this.toFloat()
-            return return !this.isNullOrBlank()
+            return this.isNullOrBlank()
         }
         catch (e: Exception){
-            return false
+            return true
         }
     }
     fun onFechaChange(value : String){
@@ -63,11 +67,13 @@ class GastosViewModel @Inject constructor(
     }
     fun onIdSuplidorChange(value : String){
         idSuplidor = value
-        idSuplidorError = value.isValid()
+        idSuplidorError = value.isInvalid()
     }
     fun onNcfChange(value : String){
         ncf = value
-        ncfError = value.isNullOrBlank()
+        if(!value.isNullOrBlank()){
+            ncfError = value.length != 11
+        }
     }
     fun onConceptoChange(value : String){
         concepto = value
@@ -75,23 +81,21 @@ class GastosViewModel @Inject constructor(
     }
     fun onDescuentoChange(value : String){
         descuento = value
-        descuentoError = value.isValid()
+        descuentoError = value.isInvalid()
     }
     fun onItbisChange(value : String){
         itbis = value
-        itbisError = value.isValid()
+        itbisError = value.isInvalid()
     }
     fun onMontoChange(value : String){
         monto = value
-        montoError = value.isValid()
+        montoError = value.isInvalid()
     }
 
 
     private var _stateGastos = mutableStateOf(GastosListState())
     val stateGastos: State<GastosListState> = _stateGastos
 
-    private var _stateSuplidores = mutableStateOf(SuplidoresListState())
-    val stateSuplidores: State<SuplidoresListState> = _stateSuplidores
     init {
         load()
     }
@@ -113,21 +117,7 @@ class GastosViewModel @Inject constructor(
             }
         }.launchIn(viewModelScope)
 
-        suplidorRepository.getSuplidores().onEach{ result ->
-            when (result) {
-                is Resource.Loading -> {
-                    _stateSuplidores.value = SuplidoresListState(isLoading = true)
-                }
-                is Resource.Success -> {
-                    _stateSuplidores.value = SuplidoresListState(suplidores = result.data ?: emptyList())
-                }
-                is Resource.Error -> {
-                    _stateSuplidores.value = SuplidoresListState(error = result.message ?: "Error desconocido")
-                }
 
-                else -> {}
-            }
-        }.launchIn(viewModelScope)
     }
 
     fun clear(){
@@ -138,6 +128,8 @@ class GastosViewModel @Inject constructor(
         onDescuentoChange("")
         onItbisChange("")
         onMontoChange("")
+        selectedText=""
+        gastoActual=GastoDto(0, "",0, "", "", 0,0,0)
     }
     fun invalidSave() :Boolean{
         return fechaError and idSuplidorError and ncfError and conceptoError and conceptoError and descuentoError and itbisError and montoError
@@ -145,9 +137,15 @@ class GastosViewModel @Inject constructor(
 
     fun save(){
         viewModelScope.launch {
-            if (!invalidSave()){
-                gastoRepository.postGastos(GastoDto(idGasto = 0, fecha=fecha, idSuplidor=idSuplidor.toInt(),ncf = ncf,
-                    concepto=concepto, descuento=descuento.toInt(), itbis= itbis.toInt(), monto=monto.toInt() ))
+            if(gastoActual.idGasto!=0){
+                upload()
+            }
+            else
+            {
+                if (!invalidSave()){
+                    gastoRepository.postGastos(GastoDto(idGasto = 0, fecha="${fecha[2]}-${fecha[1]}-${fecha[0]}", idSuplidor=idSuplidor.toInt(),ncf = ncf,
+                        concepto=concepto, descuento=descuento.toInt(), itbis= itbis.toInt(), monto=monto.toInt() ))
+                }
             }
         }
         clear()
@@ -162,11 +160,13 @@ class GastosViewModel @Inject constructor(
 
     fun upload (){
         viewModelScope.launch {
-            gastoActual.idGasto?.let {
-                gastoRepository.putGastos(GastoDto(idGasto = 0, fecha=fecha, idSuplidor=idSuplidor.toInt(),ncf = ncf,
-                    concepto=concepto, descuento=descuento.toInt(), itbis= itbis.toInt(), monto=monto.toInt() ),
-                    it
-                )
+            if (!invalidSave()){
+                gastoActual.idGasto?.let {
+                    gastoRepository.putGastos(GastoDto(idGasto = gastoActual.idGasto, fecha=fecha, idSuplidor=idSuplidor.toInt(),ncf = ncf,
+                        concepto=concepto, descuento=descuento.toInt(), itbis= itbis.toInt(), monto=monto.toInt() ),
+                        it
+                    )
+                }
             }
         }
         load()
@@ -177,6 +177,13 @@ class GastosViewModel @Inject constructor(
             var gastoBuscado = gastoRepository.getGastoById(gastoId)
            gastoBuscado?.let {
                gastoActual=gastoBuscado
+               gastoActual.fecha?.let { it1 -> onFechaChange(it1) }
+               onIdSuplidorChange(gastoActual.idSuplidor.toString())
+               gastoActual.ncf?.let { it1 -> onNcfChange(it1) }
+               gastoActual.concepto?.let { it1 -> onConceptoChange(it1) }
+               onDescuentoChange(gastoActual.descuento.toString())
+               onItbisChange(gastoActual.itbis.toString())
+               onMontoChange(gastoActual.monto.toString())
            }
         }
         load()

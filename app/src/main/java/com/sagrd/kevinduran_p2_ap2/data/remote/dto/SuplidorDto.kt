@@ -11,5 +11,5 @@ data class SuplidorDto(
     @Json(name = "idSuplidor")
     var idSuplidor : Int?=null,
     @Json(name = "nombres")
-    var nombres : Int?=null
+    var nombres : String
 )
